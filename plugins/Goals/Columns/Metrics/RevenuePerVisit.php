@@ -8,6 +8,7 @@
 namespace Piwik\Plugins\Goals\Columns\Metrics;
 
 use Piwik\Archive\DataTableFactory;
+use Piwik\Columns\Dimension;
 use Piwik\DataTable;
 use Piwik\DataTable\Row;
 use Piwik\Metrics;
@@ -49,14 +50,15 @@ class RevenuePerVisit extends ProcessedMetric
 
         $revenue = 0;
         foreach ($goals as $goalId => $goalMetrics) {
-            if ($goalId == Piwik::LABEL_ID_GOAL_IS_ECOMMERCE_CART) {
+            if (is_numeric($goalId) && $goalId < GoalManager::IDGOAL_ORDER) {
                 continue;
             }
-            if ($goalId >= GoalManager::IDGOAL_ORDER
-                || $goalId == Piwik::LABEL_ID_GOAL_IS_ECOMMERCE_ORDER
-            ) {
-                $revenue += (int) $this->getMetric($goalMetrics, 'revenue', $mappingFromNameToIdGoal);
+
+            if (!is_numeric($goalId) && $goalId != Piwik::LABEL_ID_GOAL_IS_ECOMMERCE_ORDER) {
+                continue;
             }
+
+            $revenue += (int) $this->getMetric($goalMetrics, 'revenue', $mappingFromNameToIdGoal);
         }
 
         if ($revenue == 0) {
@@ -84,6 +86,6 @@ class RevenuePerVisit extends ProcessedMetric
 
     public function getSemanticType(): ?string
     {
-        return self::SEMANTIC_TYPE_CURRENCY;
+        return Dimension::TYPE_MONEY;
     }
 }

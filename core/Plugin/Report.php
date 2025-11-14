@@ -119,7 +119,7 @@ class Report
      *
      * If set to null, the defaults from the `Metrics.getDefaultMetricSemanticTypes` event are used.
      *
-     * @var null|string[]
+     * @var null|(string|null)[]
      */
     protected $metricSemanticTypes = null;
 
@@ -206,6 +206,21 @@ class Report
      * @var bool
      */
     protected $defaultSortOrderDesc = true;
+
+    /**
+     * The column that uniquely identifies a row in this report. Normally
+     * this is the 'label' column, but it is sometimes the case that the label column is
+     * not unique. In this case, another column or metadata is used to uniquely identify a row, but
+     * we don't want to display it to the user, perhaps because it is a numeric ID and not a human
+     * readable value.
+     *
+     * This property is used by features like Row Evolution which compares the same row in
+     * multiple instances of a report. Being able to find corresponding rows in reports for other
+     * periods/sites/etc. is required for such features.
+     *
+     * @var string
+     */
+    protected $rowIdentifier = 'label';
 
     /**
      * The constructor initializes the module, action and the default metrics. If you want to overwrite any of those
@@ -664,7 +679,9 @@ class Report
         $report['metrics']              = $this->getMetrics();
         $report['metricsDocumentation'] = $this->getMetricsDocumentation();
         $report['processedMetrics']     = $this->getProcessedMetrics();
-        $report['metricTypes']          = $this->getMetricSemanticTypes();
+
+        $report['metricTypes'] = $this->getMetricSemanticTypes();
+        $report['metricTypes'] = array_map(function ($t) { return $t ?: 'unspecified'; }, $report['metricTypes']);
 
         if (!empty($this->actionToLoadSubTables)) {
             $report['actionToLoadSubTables'] = $this->actionToLoadSubTables;
@@ -1122,7 +1139,18 @@ class Report
         }
     }
 
-    private function deduceMetricTypeFromName($metric): string
+    /**
+     * Returns the name of the column/metadata that uniquely identifies rows in this report. See
+     * {@link self::$rowIdentifier} for more information.
+     *
+     * @return string
+     */
+    public function getRowIdentifier(): string
+    {
+        return $this->rowIdentifier;
+    }
+
+    private function deduceMetricTypeFromName($metric): ?string
     {
         $metricName = $metric instanceof Metric ? $metric->getName() : $metric;
 
@@ -1133,10 +1161,10 @@ class Report
 
         if (empty($metricType)) {
             if (preg_match('/_(evolution|rate|percentage)(_|$)/', $metricName)) {
-                $metricType = Metric::SEMANTIC_TYPE_PERCENT;
+                $metricType = Dimension::TYPE_PERCENT;
             } else {
                 $allMetricTypes = Metrics::getDefaultMetricSemanticTypes();
-                $metricType = $allMetricTypes[$metricName] ?? Metric::SEMANTIC_TYPE_UNKNOWN;
+                $metricType = $allMetricTypes[$metricName] ?? null;
             }
         }
 
